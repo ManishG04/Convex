@@ -1,16 +1,16 @@
 # Convex
 
-> **"Gamifying Focus with Affective Computing."**
-> A V-Tuber style studyverse where your face controls the game, processed 100% locally for total privacy.
+**"Gamifying Focus with Affective Computing."**
+A V-Tuber style studyverse where your face controls the game, processed 100% locally for total privacy.
 
 
 ## Table of Contents
 
 * [About the Project](#about-the-project)
 * [The Problem](#the-problem)
-* [Privacy Architecture](#privacy--security-the-edge-ai-advantage)
-* [Key Features](#current-features-mvp)
-* [Features for Round 2](#roadmap-round-2-updates)
+* [Privacy Architecture](#privacy--security)
+* [Key Features](#current-features)
+* [Features for Round 2](#features-for-round-2)
 * [Tech Stack](#tech-stack)
 * [Getting Started](#getting-started)
 
@@ -33,7 +33,7 @@ Traditional study apps (Yeolpumta, Forest) and tools (Zoom, Discord) suffer from
 3. **Burnout Cycles:** Users set unrealistic goals (e.g., "10 hours today"), fail, and quit entirely.
 
 
-## Current Features (MVP)
+## Current Features
 
 ### 1. The Avatar
 
@@ -46,7 +46,7 @@ The core of our platform is a bio-mirror that provides real-time feedback.
 
 Gamifying the group study experience.
 
-* **The Mechanic:** Join a lobby with 4+ friends. The group's collective Focus Time deals damage to a "Boss Monster."
+* **The Mechanic:** Join a group with 4+ friends. The group's collective Focus Time deals damage to a "Boss Monster."
 
 
 ## Features for Round 2
@@ -54,7 +54,7 @@ We are moving from *Tracking Focus* to *Optimizing Habits*.
 
 ### 3. Local Focus Verification
 
-* **Confusion Detection:** The app detects "Furrowed Brow" micro-expressions to tag sessions as "High Cognitive Load," giving you data on which subjects are actually hardest for you.
+* **Confusion Detection:** The web-app will detects expressions to tag session's cognitive load giving the user data in which session the user struggles the most.
 
 * **The Penalty:** If one user gets distracted (detected by AI), the group's **DPS (Damage Per Second)** drops. This creates positive peer pressure to stay focused.
 
@@ -104,8 +104,8 @@ Follow these instructions to get a local copy of the project up and running usin
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/your-username/your-repo-name.git
-cd your-repo-name
+git clone https://github.com/ManishG04/Convex
+cd Convex
 ```
 
 
