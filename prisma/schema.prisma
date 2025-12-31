@@ -1,0 +1,40 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Room {
+  id        String    @id @default(cuid())
+  code      String    @unique
+  name      String
+  createdAt DateTime  @default(now())
+  sessions  Session[]
+}
+
+model Session {
+  id           String        @id @default(cuid())
+  roomId       String
+  room         Room          @relation(fields: [roomId], references: [id])
+  startedAt    DateTime      @default(now())
+  endedAt      DateTime?
+  phase        String        @default("focus") // focus | break
+  durationMins Int           @default(25)
+  participants Participant[]
+}
+
+model Participant {
+  id             String   @id @default(cuid())
+  username       String
+  sessionId      String
+  session        Session  @relation(fields: [sessionId], references: [id])
+  focusTime      Int      @default(0) // seconds of focus time
+  distractedTime Int      @default(0) // seconds distracted
+  joinedAt       DateTime @default(now())
+}
