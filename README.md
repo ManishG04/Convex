@@ -76,7 +76,7 @@ We utilize a **Zero-Trust Video Architecture**. We understand that students are 
 | **AI Engine** | TensorFlow.js / MediaPipe | Face Mesh and Gaze tracking (Edge)   |
 | **Backend**   | Python FastAPI            | API and Logic                        |
 | **Real-Time** | python-socketio           | JSON Coordinate Sync for Multiplayer |
-| **Database**  | SQLite + Prisma           | User stats and session metadata      |
+| **Video**     | LiveKit                   | Optional video rooms                 |
 
 ---
 
@@ -103,13 +103,7 @@ cd Convex
 pnpm install
 ```
 
-3. **Set up the database**
-
-```bash
-pnpm exec prisma migrate dev
-```
-
-4. **Install backend dependencies**
+3. **Install backend dependencies**
 
 ```bash
 cd backend
@@ -123,7 +117,6 @@ Create `.env` files:
 **Root `.env`** (for Next.js frontend):
 
 ```bash
-DATABASE_URL="file:./dev.db"
 NEXT_PUBLIC_SOCKET_URL="http://localhost:3001"
 
 # Optional: LiveKit for video
