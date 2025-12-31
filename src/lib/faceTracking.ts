@@ -13,7 +13,7 @@ export interface HolisticResults {
   poseLandmarks: Landmark[] | null;
 }
 
-// MediaPipe Holistic instance type (dynamically loaded)
+// MediaPipe Holistic instance type
 interface HolisticInstance {
   setOptions: (options: Record<string, unknown>) => void;
   onResults: (callback: (results: HolisticRawResults) => void) => void;
@@ -28,17 +28,50 @@ interface HolisticRawResults {
   poseLandmarks?: Landmark[];
 }
 
-// Dynamically load MediaPipe Holistic (client-side only, no SSR)
-async function loadHolistic(): Promise<HolisticInstance> {
-  // Dynamic import to avoid SSR issues
-  const holisticModule = await import("@mediapipe/holistic");
-  const Holistic = holisticModule.Holistic;
+// SINGLETON: Cache the Holistic instance to avoid slow re-initialization
+let cachedHolistic: HolisticInstance | null = null;
+let holisticLoadPromise: Promise<HolisticInstance> | null = null;
 
-  return new Holistic({
-    locateFile: (file: string) => {
-      return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic@0.5.1675471629/${file}`;
-    },
-  });
+// Get or create cached Holistic instance (singleton pattern)
+async function getHolistic(): Promise<HolisticInstance> {
+  if (cachedHolistic) return cachedHolistic;
+
+  // If already loading, wait for that promise
+  if (holisticLoadPromise) return holisticLoadPromise;
+
+  // Start loading
+  holisticLoadPromise = (async () => {
+    const holisticModule = await import("@mediapipe/holistic");
+    const Holistic = holisticModule.Holistic;
+
+    const instance = new Holistic({
+      locateFile: (file: string) => {
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic@0.5.1675471629/${file}`;
+      },
+    });
+
+    // Pre-configure with optimal settings
+    instance.setOptions({
+      modelComplexity: 0, // Lite model for speed
+      smoothLandmarks: true,
+      enableSegmentation: false,
+      smoothSegmentation: false,
+      refineFaceLandmarks: false,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5,
+    });
+
+    cachedHolistic = instance;
+    return instance;
+  })();
+
+  return holisticLoadPromise;
+}
+
+// PRELOAD: Call this early to start loading MediaPipe in the background
+export function preloadMediaPipe(): void {
+  if (typeof window === "undefined") return;
+  getHolistic().catch(() => {}); // Fire and forget
 }
 
 export async function initHolisticTracking(
@@ -47,21 +80,16 @@ export async function initHolisticTracking(
 ): Promise<() => void> {
   let animationId: number | null = null;
   let isRunning = true;
-  let holistic: HolisticInstance | null = null;
+  let isProcessing = false;
+  let lastFrameTime = 0;
+  const targetFps = 24;
+  const frameInterval = 1000 / targetFps;
+
+  let holistic: HolisticInstance;
 
   try {
-    // Dynamically load MediaPipe (client-side only)
-    holistic = await loadHolistic();
-
-    holistic.setOptions({
-      modelComplexity: 1,
-      smoothLandmarks: true,
-      enableSegmentation: false,
-      smoothSegmentation: false,
-      refineFaceLandmarks: true,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5,
-    });
+    // Get cached instance (fast if already loaded)
+    holistic = await getHolistic();
 
     holistic.onResults((results: HolisticRawResults) => {
       onResults({
@@ -78,20 +106,28 @@ export async function initHolisticTracking(
           ? Array.from(results.poseLandmarks)
           : null,
       });
+      isProcessing = false;
     });
   } catch (error) {
     console.error("Failed to initialize MediaPipe Holistic:", error);
     return () => {};
   }
 
-  async function processFrame() {
-    if (!isRunning || !holistic) return;
+  async function processFrame(timestamp: number) {
+    if (!isRunning) return;
 
-    if (videoElement.readyState >= 2) {
+    const elapsed = timestamp - lastFrameTime;
+    if (
+      !isProcessing &&
+      elapsed >= frameInterval &&
+      videoElement.readyState >= 2
+    ) {
+      isProcessing = true;
+      lastFrameTime = timestamp;
       try {
         await holistic.send({ image: videoElement });
       } catch {
-        // Ignore errors during processing
+        isProcessing = false;
       }
     }
 
@@ -99,11 +135,11 @@ export async function initHolisticTracking(
   }
 
   videoElement.addEventListener("loadeddata", () => {
-    processFrame();
+    requestAnimationFrame(processFrame);
   });
 
   if (videoElement.readyState >= 2) {
-    processFrame();
+    requestAnimationFrame(processFrame);
   }
 
   return () => {
@@ -111,15 +147,11 @@ export async function initHolisticTracking(
     if (animationId) {
       cancelAnimationFrame(animationId);
     }
-    try {
-      holistic?.close();
-    } catch {
-      // Ignore cleanup errors
-    }
+    // NOTE: Don't close holistic - it's cached for reuse
   };
 }
 
-// Legacy export for backwards compatibility
+// Legacy export
 export type FaceLandmarks = Landmark;
 export async function initFaceTracking(
   videoElement: HTMLVideoElement,

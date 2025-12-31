@@ -1,14 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { JoinForm, TimerDisplay, VideoGrid } from "@/components";
 import { useRoom, useDistraction } from "@/lib/hooks";
+import { preloadMediaPipe } from "@/lib/faceTracking";
 
 export default function Home() {
   const [session, setSession] = useState<{
     username: string;
     roomCode: string;
   } | null>(null);
+
+  // Preload MediaPipe as soon as page loads (before user joins)
+  useEffect(() => {
+    preloadMediaPipe();
+  }, []);
 
   if (!session) {
     return (

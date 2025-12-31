@@ -178,10 +178,10 @@ export function useRoom(roomCode: string, username: string) {
     socket.disconnect();
   }, [roomCode]);
 
-  // Send blend shapes to server (throttled to ~30fps)
+  // Send blend shapes to server (throttled to ~20fps for network efficiency)
   const sendBlendShapes = useCallback((blendShapes: BlendShapes) => {
     const now = Date.now();
-    if (now - lastSentRef.current < 33) return; // ~30fps throttle
+    if (now - lastSentRef.current < 50) return; // ~20fps throttle (was 33ms/30fps)
     lastSentRef.current = now;
 
     const socket = getSocket();

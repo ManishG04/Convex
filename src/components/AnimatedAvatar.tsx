@@ -215,6 +215,13 @@ export function AnimatedAvatar({
   remoteUsername,
   getRemoteBlendShapes,
 }: AnimatedAvatarProps) {
+  // Preload avatar as early as possible
+  useEffect(() => {
+    if (avatarUrl) {
+      useGLTF.preload(avatarUrl);
+    }
+  }, [avatarUrl]);
+
   const [blendShapes, setBlendShapes] = useState<BlendShapes | null>(null);
   const [holisticResults, setHolisticResults] =
     useState<HolisticResults | null>(null);
@@ -231,13 +238,13 @@ export function AnimatedAvatar({
   useEffect(() => {
     if (isLocal || !remoteUsername || !getRemoteBlendShapes) return;
 
-    // Poll at ~30fps for remote blend shapes
+    // Poll at ~20fps for remote blend shapes (matches network send rate)
     const intervalId = setInterval(() => {
       const networkBlendShapes = getRemoteBlendShapes(remoteUsername);
       if (networkBlendShapes) {
         remoteBlendShapesRef.current = networkToBlendShapes(networkBlendShapes);
       }
-    }, 33);
+    }, 50); // 20fps (was 33ms/30fps)
 
     return () => clearInterval(intervalId);
   }, [isLocal, remoteUsername, getRemoteBlendShapes]);
@@ -258,9 +265,16 @@ export function AnimatedAvatar({
     document.body.appendChild(video);
     videoElementRef.current = video;
 
-    // Request camera access
+    // Request camera access - lower resolution for faster processing
     navigator.mediaDevices
-      .getUserMedia({ video: { width: 640, height: 480, facingMode: "user" } })
+      .getUserMedia({
+        video: {
+          width: { ideal: 320 }, // Lower res for speed (was 640)
+          height: { ideal: 240 }, // Lower res for speed (was 480)
+          facingMode: "user",
+          frameRate: { ideal: 24 }, // Match face tracking target fps
+        },
+      })
       .then(async (stream) => {
         if (!isMounted) {
           stream.getTracks().forEach((track) => track.stop());

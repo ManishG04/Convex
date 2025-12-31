@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore, useEffect } from "react";
 import Link from "next/link";
+import { preloadAvatar } from "./AnimatedAvatar";
 
 interface JoinFormProps {
   onJoin: (username: string, roomCode: string) => void;
@@ -27,6 +28,16 @@ export function JoinForm({ onJoin }: JoinFormProps) {
   // Track if avatar check was refreshed after form interaction
   // State to force re-check of avatar
   const [noAvatarError, setNoAvatarError] = useState(false);
+
+  // Preload avatar GLB as soon as we know the user has one
+  useEffect(() => {
+    if (hasAvatar) {
+      const avatarUrl = localStorage.getItem("selectedAvatar");
+      if (avatarUrl) {
+        preloadAvatar(avatarUrl);
+      }
+    }
+  }, [hasAvatar]);
 
   const generateRoomCode = () => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
