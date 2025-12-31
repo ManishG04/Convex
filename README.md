@@ -8,9 +8,10 @@ A V-Tuber style studyverse where your face controls the game, processed 100% loc
 
 * [About the Project](#about-the-project)
 * [The Problem](#the-problem)
-* [Privacy Architecture](#privacy--security)
+* [User Flow Diagram](#userflow-diagram)
 * [Key Features](#current-features)
 * [Features for Round 2](#features-for-round-2)
+* [Privacy Architecture](#privacy--security)
 * [Tech Stack](#tech-stack)
 * [Getting Started](#getting-started)
 
@@ -32,6 +33,8 @@ Traditional study apps (Yeolpumta, Forest) and tools (Zoom, Discord) suffer from
 2. **Digital Loneliness:** Studying alone kills motivation, but always-on video calls cause fatigue and feel invasive.
 3. **Burnout Cycles:** Users set unrealistic goals (e.g., "10 hours today"), fail, and quit entirely.
 
+## Userflow Diagram
+![User Diagram](assets/convex_flowchart.png)
 
 ## Current Features
 
