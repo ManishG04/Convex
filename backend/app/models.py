@@ -8,6 +8,7 @@ class Participant:
     socket_id: str
     username: str
     is_distracted: bool = False
+    avatar_url: Optional[str] = None
 
 
 @dataclass
@@ -18,8 +19,12 @@ class Room:
     timer_phase: str = "focus"  # "focus" or "break"
     host: Optional[str] = None  # socket_id of host
 
-    def add_participant(self, socket_id: str, username: str) -> Participant:
-        participant = Participant(socket_id=socket_id, username=username)
+    def add_participant(
+        self, socket_id: str, username: str, avatar_url: Optional[str] = None
+    ) -> Participant:
+        participant = Participant(
+            socket_id=socket_id, username=username, avatar_url=avatar_url
+        )
         self.participants[socket_id] = participant
 
         # First participant becomes host
@@ -42,7 +47,11 @@ class Room:
 
     def get_participant_list(self) -> list:
         return [
-            {"username": p.username, "isDistracted": p.is_distracted}
+            {
+                "username": p.username,
+                "isDistracted": p.is_distracted,
+                "avatarUrl": p.avatar_url,
+            }
             for p in self.participants.values()
         ]
 

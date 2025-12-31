@@ -1,15 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 
 interface JoinFormProps {
   onJoin: (username: string, roomCode: string) => void;
+}
+
+// Use useSyncExternalStore to safely read localStorage (avoids hydration mismatch)
+function useHasAvatar(): boolean | null {
+  return useSyncExternalStore(
+    // Subscribe - localStorage doesn't have events, so no-op
+    () => () => {},
+    // Get client snapshot
+    () => !!localStorage.getItem("selectedAvatar"),
+    // Get server snapshot (always null during SSR)
+    () => null
+  );
 }
 
 export function JoinForm({ onJoin }: JoinFormProps) {
   const [username, setUsername] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const hasAvatar = useHasAvatar();
+  // Track if avatar check was refreshed after form interaction
+  // State to force re-check of avatar
+  const [noAvatarError, setNoAvatarError] = useState(false);
 
   const generateRoomCode = () => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -24,6 +41,13 @@ export function JoinForm({ onJoin }: JoinFormProps) {
     e.preventDefault();
     if (!username.trim()) return;
 
+    // Re-check avatar before joining
+    const avatarUrl = localStorage.getItem("selectedAvatar");
+    if (!avatarUrl) {
+      setNoAvatarError(true);
+      return;
+    }
+
     const code = isCreating
       ? generateRoomCode()
       : roomCode.trim().toUpperCase();
@@ -31,6 +55,11 @@ export function JoinForm({ onJoin }: JoinFormProps) {
 
     onJoin(username.trim(), code);
   };
+
+  // Show avatar error if either hook returns false OR if submit found no avatar
+  const showNoAvatar = hasAvatar === false || noAvatarError;
+  // Disable button while checking avatar status (null) or if no avatar
+  const isButtonDisabled = hasAvatar === null || showNoAvatar;
 
   return (
     <div className="max-w-md mx-auto p-8 bg-gray-900 rounded-2xl shadow-xl">
@@ -40,6 +69,34 @@ export function JoinForm({ onJoin }: JoinFormProps) {
       <p className="text-gray-400 text-center mb-8">
         Focus together, achieve more.
       </p>
+
+      {/* Avatar required notice */}
+      {showNoAvatar && (
+        <div className="mb-6 p-4 bg-amber-900/50 border border-amber-600 rounded-lg">
+          <p className="text-amber-200 text-sm mb-3">
+            ⚠️ You need to create an avatar before joining a room.
+          </p>
+          <Link
+            href="/avatar"
+            className="block w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium text-center transition-colors"
+          >
+            Create Your Avatar →
+          </Link>
+        </div>
+      )}
+
+      {/* Avatar ready indicator */}
+      {hasAvatar === true && !noAvatarError && (
+        <div className="mb-6 p-3 bg-green-900/30 border border-green-700 rounded-lg flex items-center gap-3">
+          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+          <p className="text-green-300 text-sm">
+            Avatar ready!{" "}
+            <Link href="/avatar" className="underline hover:text-green-200">
+              Change it?
+            </Link>
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -106,9 +163,18 @@ export function JoinForm({ onJoin }: JoinFormProps) {
 
         <button
           type="submit"
-          className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+          disabled={isButtonDisabled}
+          className={`w-full py-3 rounded-lg font-medium transition-colors ${
+            isButtonDisabled
+              ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+              : "bg-green-600 hover:bg-green-700 text-white"
+          }`}
         >
-          {isCreating ? "Create & Join Room" : "Join Room"}
+          {hasAvatar === null
+            ? "Checking..."
+            : isCreating
+            ? "Create & Join Room"
+            : "Join Room"}
         </button>
       </form>
     </div>

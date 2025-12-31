@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { JoinForm, TimerDisplay, VideoGrid } from "@/components";
-import { useRoom, useDistraction, useLiveKit } from "@/lib/hooks";
+import { useRoom, useDistraction } from "@/lib/hooks";
 
 export default function Home() {
   const [session, setSession] = useState<{
@@ -30,22 +30,14 @@ function RoomView({
   username: string;
   roomCode: string;
 }) {
-  const { isConnected, participants, error, leaveRoom } = useRoom(
-    roomCode,
-    username
-  );
-
-  // LiveKit video
   const {
-    isConnected: isLiveKitConnected,
-    isConfigured: isLiveKitConfigured,
-    isCameraEnabled,
-    isMicEnabled,
-    participants: liveKitParticipants,
-    connect: connectLiveKit,
-    toggleCamera,
-    toggleMic,
-  } = useLiveKit({ roomCode, username });
+    isConnected,
+    participants,
+    error,
+    leaveRoom,
+    sendBlendShapes,
+    getRemoteBlendShapes,
+  } = useRoom(roomCode, username);
 
   // Set up distraction detection
   useDistraction();
@@ -92,18 +84,12 @@ function RoomView({
         {/* Timer */}
         <TimerDisplay isHost={participants[0]?.username === username} />
 
-        {/* Video grid */}
+        {/* Avatar grid */}
         <VideoGrid
           participants={participants}
           localUsername={username}
-          liveKitParticipants={liveKitParticipants}
-          isCameraEnabled={isCameraEnabled}
-          isMicEnabled={isMicEnabled}
-          onToggleCamera={toggleCamera}
-          onToggleMic={toggleMic}
-          isLiveKitConnected={isLiveKitConnected}
-          onConnectLiveKit={connectLiveKit}
-          isLiveKitConfigured={isLiveKitConfigured}
+          sendBlendShapes={sendBlendShapes}
+          getRemoteBlendShapes={getRemoteBlendShapes}
         />
 
         {/* Stats placeholder */}

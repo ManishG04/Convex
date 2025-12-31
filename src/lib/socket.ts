@@ -42,6 +42,7 @@ export const SOCKET_EVENTS = {
   TIMER_STOP: "timer:stop",
   USER_DISTRACTED: "user:distracted",
   USER_FOCUSED: "user:focused",
+  BLEND_SHAPES: "avatar:blend-shapes", // Send blend shapes for avatar animation
 
   // Server -> Client
   TIMER_STARTED: "timer:started",
@@ -51,4 +52,5 @@ export const SOCKET_EVENTS = {
   USER_LEFT: "user:left",
   USER_STATUS_CHANGED: "user:status-changed",
   ROOM_STATE: "room:state",
+  BLEND_SHAPES_UPDATE: "avatar:blend-shapes-update", // Receive blend shapes from others
 } as const;

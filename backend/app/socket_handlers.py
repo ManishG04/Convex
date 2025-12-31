@@ -38,14 +38,15 @@ async def disconnect(sid):
 async def handle_room_join(sid, data):
     room_code = data.get("roomCode")
     username = data.get("username")
+    avatar_url = data.get("avatarUrl")  # Avatar URL from client
 
     if not room_code or not username:
         return
 
-    print(f"{username} joining room {room_code}")
+    print(f"{username} joining room {room_code} with avatar: {avatar_url}")
 
     room = room_manager.get_or_create_room(room_code)
-    room.add_participant(sid, username)
+    room.add_participant(sid, username, avatar_url)
 
     # Store session data
     sessions[sid] = {"room_code": room_code, "username": username}
@@ -56,9 +57,12 @@ async def handle_room_join(sid, data):
     # Send current room state to joining user
     await sio.emit(Events.ROOM_STATE, room_manager.get_room_state(room), to=sid)
 
-    # Notify others
+    # Notify others (include avatar URL so they can display the avatar)
     await sio.emit(
-        Events.USER_JOINED, {"username": username}, room=room_code, skip_sid=sid
+        Events.USER_JOINED,
+        {"username": username, "avatarUrl": avatar_url},
+        room=room_code,
+        skip_sid=sid,
     )
 
     print(f"Room {room_code} now has {len(room.participants)} participants")
@@ -213,3 +217,25 @@ async def handle_user_focused(sid, data=None):
             room=room_code,
         )
         print(f"{username} is focused")
+
+
+@sio.on(Events.BLEND_SHAPES)
+async def handle_blend_shapes(sid, data):
+    """
+    Receive blend shapes from a client and broadcast to others in the room.
+    This enables real-time avatar animation sync.
+    """
+    session = sessions.get(sid)
+    if not session:
+        return
+
+    room_code = session["room_code"]
+    username = session["username"]
+
+    # Broadcast to all others in the room (skip sender)
+    await sio.emit(
+        Events.BLEND_SHAPES_UPDATE,
+        {"username": username, "blendShapes": data},
+        room=room_code,
+        skip_sid=sid,
+    )

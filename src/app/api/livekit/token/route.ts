@@ -24,11 +24,14 @@ export async function POST(req: NextRequest) {
     name: username,
   });
 
+  // IMPORTANT: Disable video/audio publishing - only avatars are shown
+  // Raw video feeds are NOT transmitted for privacy
   token.addGrant({
     roomJoin: true,
     room: roomCode,
-    canPublish: true,
-    canSubscribe: true,
+    canPublish: false, // No video/audio publishing
+    canSubscribe: false, // No need to receive video/audio
+    canPublishData: true, // Allow data messages for avatar blend shapes sync
   });
 
   const jwt = await token.toJwt();

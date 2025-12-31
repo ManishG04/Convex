@@ -4,13 +4,21 @@ import { useState, useEffect, useCallback } from "react";
 import {
   Room,
   RoomEvent,
-  VideoPresets,
-  Track,
   LocalParticipant,
   RemoteParticipant,
-  LocalTrackPublication,
-  RemoteTrackPublication,
 } from "livekit-client";
+
+/**
+ * LiveKit hook for data-only communication (no video/audio)
+ *
+ * IMPORTANT: Raw video feeds are NOT transmitted for privacy.
+ * This hook is used only for:
+ * - Room presence (who's connected)
+ * - Data channel messages (for syncing avatar blend shapes)
+ *
+ * Each user's camera is accessed LOCALLY only for face tracking,
+ * and only the animated avatar is displayed to other participants.
+ */
 
 interface UseLiveKitOptions {
   roomCode: string;
@@ -19,24 +27,36 @@ interface UseLiveKitOptions {
 
 interface ParticipantInfo {
   identity: string;
-  videoTrack: Track | null;
-  audioTrack: Track | null;
-  isMuted: boolean;
-  isCameraOff: boolean;
   isLocal: boolean;
+  metadata?: string;
+}
+
+// Blend shape data structure for avatar sync
+export interface BlendShapeData {
+  headRotationX: number;
+  headRotationY: number;
+  headRotationZ: number;
+  headPositionX: number;
+  headPositionY: number;
+  headPositionZ: number;
+  eyeBlinkLeft: number;
+  eyeBlinkRight: number;
+  jawOpen: number;
+  mouthSmile: number;
 }
 
 export function useLiveKit({ roomCode, username }: UseLiveKitOptions) {
   const [room, setRoom] = useState<Room | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isCameraEnabled, setIsCameraEnabled] = useState(false);
-  const [isMicEnabled, setIsMicEnabled] = useState(false);
   const [participants, setParticipants] = useState<ParticipantInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
+  const [remoteBlendShapes, setRemoteBlendShapes] = useState<
+    Map<string, BlendShapeData>
+  >(new Map());
 
-  // Fetch token and connect to LiveKit
+  // Fetch token and connect to LiveKit (data-only mode)
   const connect = useCallback(async () => {
     if (isConnecting || isConnected) return;
 
@@ -61,17 +81,15 @@ export function useLiveKit({ roomCode, username }: UseLiveKitOptions) {
 
       setIsConfigured(true);
 
+      // Create room without video/audio capture settings
       const newRoom = new Room({
-        adaptiveStream: true,
-        dynacast: true,
-        videoCaptureDefaults: {
-          resolution: VideoPresets.h720.resolution,
-        },
+        adaptiveStream: false,
+        dynacast: false,
       });
 
       // Set up event listeners
       newRoom.on(RoomEvent.Connected, () => {
-        console.log("LiveKit connected");
+        console.log("LiveKit connected (data-only mode)");
         setIsConnected(true);
         updateParticipants(newRoom);
       });
@@ -80,38 +98,37 @@ export function useLiveKit({ roomCode, username }: UseLiveKitOptions) {
         console.log("LiveKit disconnected");
         setIsConnected(false);
         setParticipants([]);
+        setRemoteBlendShapes(new Map());
       });
 
       newRoom.on(RoomEvent.ParticipantConnected, () => {
         updateParticipants(newRoom);
       });
 
-      newRoom.on(RoomEvent.ParticipantDisconnected, () => {
+      newRoom.on(RoomEvent.ParticipantDisconnected, (participant) => {
         updateParticipants(newRoom);
+        // Clean up blend shapes for disconnected participant
+        setRemoteBlendShapes((prev) => {
+          const next = new Map(prev);
+          next.delete(participant.identity);
+          return next;
+        });
       });
 
-      newRoom.on(RoomEvent.TrackSubscribed, () => {
-        updateParticipants(newRoom);
-      });
-
-      newRoom.on(RoomEvent.TrackUnsubscribed, () => {
-        updateParticipants(newRoom);
-      });
-
-      newRoom.on(RoomEvent.LocalTrackPublished, () => {
-        updateParticipants(newRoom);
-      });
-
-      newRoom.on(RoomEvent.LocalTrackUnpublished, () => {
-        updateParticipants(newRoom);
-      });
-
-      newRoom.on(RoomEvent.TrackMuted, () => {
-        updateParticipants(newRoom);
-      });
-
-      newRoom.on(RoomEvent.TrackUnmuted, () => {
-        updateParticipants(newRoom);
+      // Listen for data messages (avatar blend shapes from other participants)
+      newRoom.on(RoomEvent.DataReceived, (payload, participant) => {
+        if (!participant) return;
+        try {
+          const decoder = new TextDecoder();
+          const data = JSON.parse(decoder.decode(payload)) as BlendShapeData;
+          setRemoteBlendShapes((prev) => {
+            const next = new Map(prev);
+            next.set(participant.identity, data);
+            return next;
+          });
+        } catch {
+          // Ignore invalid data
+        }
       });
 
       await newRoom.connect(data.url, data.token);
@@ -125,7 +142,7 @@ export function useLiveKit({ roomCode, username }: UseLiveKitOptions) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomCode, username, isConnecting, isConnected]);
 
-  // Update participants list
+  // Update participants list (identities only, no video/audio tracks)
   const updateParticipants = (currentRoom: Room) => {
     const allParticipants: ParticipantInfo[] = [];
 
@@ -145,70 +162,28 @@ export function useLiveKit({ roomCode, username }: UseLiveKitOptions) {
     participant: LocalParticipant | RemoteParticipant,
     isLocal: boolean
   ): ParticipantInfo => {
-    let videoTrack: Track | null = null;
-    let audioTrack: Track | null = null;
-    let isMuted = true;
-    let isCameraOff = true;
-
-    participant.trackPublications.forEach(
-      (publication: LocalTrackPublication | RemoteTrackPublication) => {
-        if (publication.track) {
-          if (publication.kind === Track.Kind.Video) {
-            videoTrack = publication.track;
-            isCameraOff = publication.isMuted;
-          } else if (publication.kind === Track.Kind.Audio) {
-            audioTrack = publication.track;
-            isMuted = publication.isMuted;
-          }
-        }
-      }
-    );
-
     return {
       identity: participant.identity,
-      videoTrack,
-      audioTrack,
-      isMuted,
-      isCameraOff,
       isLocal,
+      metadata: participant.metadata,
     };
   };
 
-  // Toggle camera
-  const toggleCamera = useCallback(async () => {
-    if (!room) return;
+  // Send blend shapes to other participants via data channel
+  const sendBlendShapes = useCallback(
+    (blendShapes: BlendShapeData) => {
+      if (!room || !isConnected) return;
 
-    try {
-      if (isCameraEnabled) {
-        await room.localParticipant.setCameraEnabled(false);
-        setIsCameraEnabled(false);
-      } else {
-        await room.localParticipant.setCameraEnabled(true);
-        setIsCameraEnabled(true);
+      try {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(JSON.stringify(blendShapes));
+        room.localParticipant.publishData(data, { reliable: false });
+      } catch {
+        // Ignore errors (e.g., if not connected)
       }
-    } catch (err) {
-      console.error("Camera toggle error:", err);
-      setError("Failed to toggle camera");
-    }
-  }, [room, isCameraEnabled]);
-
-  // Toggle microphone
-  const toggleMic = useCallback(async () => {
-    if (!room) return;
-
-    try {
-      if (isMicEnabled) {
-        await room.localParticipant.setMicrophoneEnabled(false);
-        setIsMicEnabled(false);
-      } else {
-        await room.localParticipant.setMicrophoneEnabled(true);
-        setIsMicEnabled(true);
-      }
-    } catch (err) {
-      console.error("Mic toggle error:", err);
-      setError("Failed to toggle microphone");
-    }
-  }, [room, isMicEnabled]);
+    },
+    [room, isConnected]
+  );
 
   // Disconnect from room
   const disconnect = useCallback(() => {
@@ -216,9 +191,8 @@ export function useLiveKit({ roomCode, username }: UseLiveKitOptions) {
       room.disconnect();
       setRoom(null);
       setIsConnected(false);
-      setIsCameraEnabled(false);
-      setIsMicEnabled(false);
       setParticipants([]);
+      setRemoteBlendShapes(new Map());
     }
   }, [room]);
 
@@ -236,13 +210,11 @@ export function useLiveKit({ roomCode, username }: UseLiveKitOptions) {
     isConnected,
     isConnecting,
     isConfigured,
-    isCameraEnabled,
-    isMicEnabled,
     participants,
     error,
     connect,
     disconnect,
-    toggleCamera,
-    toggleMic,
+    sendBlendShapes,
+    remoteBlendShapes,
   };
 }
