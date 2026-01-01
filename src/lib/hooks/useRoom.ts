@@ -17,7 +17,7 @@ interface RoomState {
   phase: "focus" | "break";
 }
 
-// Simplified blend shapes for network sync (reduced data)
+// Simplified blend shapes for network sync (face-only mode)
 export interface NetworkBlendShapes {
   // Head rotation
   headRotationX: number;
@@ -40,7 +40,7 @@ function getStoredAvatarUrl(): string | null {
   return localStorage.getItem("selectedAvatar");
 }
 
-// Convert full BlendShapes to network format (smaller payload)
+// Convert full BlendShapes to network format (face-only)
 function toNetworkBlendShapes(bs: BlendShapes): NetworkBlendShapes {
   return {
     headRotationX: Math.round(bs.headRotationX * 1000) / 1000,

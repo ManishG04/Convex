@@ -50,15 +50,17 @@ async function getHolistic(): Promise<HolisticInstance> {
       },
     });
 
-    // Pre-configure with optimal settings
+    // Pre-configure with optimal settings - FACE ONLY MODE
     instance.setOptions({
       modelComplexity: 0, // Lite model for speed
       smoothLandmarks: true,
       enableSegmentation: false,
       smoothSegmentation: false,
-      refineFaceLandmarks: false,
+      refineFaceLandmarks: true, // Better face tracking
       minDetectionConfidence: 0.5,
       minTrackingConfidence: 0.5,
+      // Disable pose and hands for speed
+      selfieMode: true,
     });
 
     cachedHolistic = instance;

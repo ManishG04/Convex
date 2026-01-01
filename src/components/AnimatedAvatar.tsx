@@ -21,19 +21,8 @@ function AvatarLoading() {
   );
 }
 
-// Ready Player Me bone names
+// Ready Player Me bone names (face-only mode)
 const BONE_NAMES = {
-  leftShoulder: "LeftShoulder",
-  leftArm: "LeftArm",
-  leftForeArm: "LeftForeArm",
-  leftHand: "LeftHand",
-  rightShoulder: "RightShoulder",
-  rightArm: "RightArm",
-  rightForeArm: "RightForeArm",
-  rightHand: "RightHand",
-  spine: "Spine",
-  spine1: "Spine1",
-  spine2: "Spine2",
   neck: "Neck",
   head: "Head",
 };
@@ -48,6 +37,20 @@ function Avatar({ url, getBlendShapes }: AvatarProps) {
   const avatarRef = useRef<THREE.Group>(null);
   const bonesRef = useRef<Record<string, THREE.Bone>>({});
   const initialRotationsRef = useRef<Record<string, THREE.Euler>>({});
+  const resetRotationsRef = useRef<boolean>(false);
+
+  // Reset all rotations when 'R' key is pressed
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "r" || event.key === "R") {
+        resetRotationsRef.current = true;
+        console.log("Resetting all bone rotations to T-pose");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Find bones and store initial rotations on mount
   useEffect(() => {
@@ -71,12 +74,26 @@ function Avatar({ url, getBlendShapes }: AvatarProps) {
   useFrame(() => {
     if (!avatarRef.current) return;
 
+    const bones = bonesRef.current;
+    const initRot = initialRotationsRef.current;
+
+    // Check if reset was requested
+    if (resetRotationsRef.current) {
+      resetRotationsRef.current = false;
+      // Reset all bones to initial rotation
+      for (const boneName of Object.keys(bones)) {
+        if (initRot[boneName]) {
+          bones[boneName].rotation.copy(initRot[boneName]);
+        }
+      }
+      // Reset avatar position
+      avatarRef.current.position.set(0, -1.9, 0);
+      return;
+    }
+
     // Get latest blend shapes (from state for local, from ref for remote)
     const blendShapes = getBlendShapes();
     if (!blendShapes) return;
-
-    const bones = bonesRef.current;
-    const initRot = initialRotationsRef.current;
 
     // Apply head position (translate the entire avatar based on head movement)
     // Scale factors for position mapping
@@ -89,20 +106,22 @@ function Avatar({ url, getBlendShapes }: AvatarProps) {
     const headZ = -blendShapes.headPosition.z * depthScale; // Depth: negative = closer
 
     // Apply position to avatar root (subtle movement)
-    avatarRef.current.position.x = headX * 0.3;
-    avatarRef.current.position.y = -1.9 + headY * 0.2; // Keep base position
-    avatarRef.current.position.z = headZ * 0.3;
+    avatarRef.current.position.x = headX * 0.7;
+    avatarRef.current.position.y = -2.0 + headY * 0.2; // Keep base position
+    avatarRef.current.position.z = headZ * 0.9 - 0.2;
 
     // Apply head rotation
     if (bones[BONE_NAMES.head] && initRot[BONE_NAMES.head]) {
       const headBone = bones[BONE_NAMES.head];
       headBone.rotation.x =
-        initRot[BONE_NAMES.head].x + blendShapes.headRotationX * 0.5;
+        initRot[BONE_NAMES.head].x + blendShapes.headRotationX * 2;
       headBone.rotation.y =
-        initRot[BONE_NAMES.head].y - blendShapes.headRotationY * 0.7;
+        initRot[BONE_NAMES.head].y - blendShapes.headRotationY * 0.9;
       headBone.rotation.z =
-        initRot[BONE_NAMES.head].z + blendShapes.headRotationZ * 0.3;
+        initRot[BONE_NAMES.head].z + blendShapes.headRotationZ * -0.9;
     }
+
+    // Face-only mode - arms stay in T-pose
 
     // Apply blend shapes to mesh (Ready Player Me uses ARKit naming)
     scene.traverse((child) => {
@@ -150,7 +169,7 @@ function Avatar({ url, getBlendShapes }: AvatarProps) {
   );
 }
 
-// Network blend shapes (simplified for transmission)
+// Network blend shapes (face-only mode)
 interface NetworkBlendShapes {
   headRotationX: number;
   headRotationY: number;
@@ -175,26 +194,6 @@ function networkToBlendShapes(nbs: NetworkBlendShapes): BlendShapes {
     eyeBlinkRight: nbs.eyeBlinkRight,
     jawOpen: nbs.jawOpen,
     mouthSmile: nbs.mouthSmile,
-    // Default values for unused fields
-    leftShoulderRotation: { x: 0, y: 0, z: 0 },
-    rightShoulderRotation: { x: 0, y: 0, z: 0 },
-    leftElbowAngle: 0,
-    rightElbowAngle: 0,
-    leftHandOpen: 0,
-    rightHandOpen: 0,
-    leftHandRotation: { x: 0, y: 0, z: 0 },
-    rightHandRotation: { x: 0, y: 0, z: 0 },
-    landmarks: {
-      leftShoulder: null,
-      leftElbow: null,
-      leftWrist: null,
-      rightShoulder: null,
-      rightElbow: null,
-      rightWrist: null,
-      leftHip: null,
-      rightHip: null,
-      nose: null,
-    },
   };
 }
 
@@ -341,7 +340,7 @@ export function AnimatedAvatar({
     }
   }, [showDebug]);
 
-  // Draw MediaPipe skeleton on debug canvas
+  // Draw face mesh on debug canvas (face-only mode)
   useEffect(() => {
     if (!showDebug || !debugCanvasRef.current || !holisticResults) return;
 
@@ -351,19 +350,6 @@ export function AnimatedAvatar({
 
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Helper to draw a point
-    const drawPoint = (
-      x: number,
-      y: number,
-      color: string,
-      size: number = 3
-    ) => {
-      ctx.beginPath();
-      ctx.arc(x * canvas.width, y * canvas.height, size, 0, 2 * Math.PI);
-      ctx.fillStyle = color;
-      ctx.fill();
-    };
 
     // Helper to draw a line between two landmarks
     const drawLine = (
@@ -388,139 +374,16 @@ export function AnimatedAvatar({
       ctx.stroke();
     };
 
-    // Draw pose skeleton
-    if (holisticResults.poseLandmarks) {
-      const pose = holisticResults.poseLandmarks;
-
-      // Pose connections (MediaPipe Pose)
-      const poseConnections = [
-        // Torso
-        [11, 12], // shoulders
-        [11, 23],
-        [12, 24], // shoulder to hip
-        [23, 24], // hips
-        // Left arm
-        [11, 13],
-        [13, 15], // shoulder-elbow-wrist
-        // Right arm
-        [12, 14],
-        [14, 16],
-        // Left leg
-        [23, 25],
-        [25, 27],
-        [27, 29],
-        [27, 31],
-        // Right leg
-        [24, 26],
-        [26, 28],
-        [28, 30],
-        [28, 32],
-        // Face
-        [0, 1],
-        [1, 2],
-        [2, 3],
-        [3, 7], // left eye
-        [0, 4],
-        [4, 5],
-        [5, 6],
-        [6, 8], // right eye
-        [9, 10], // mouth
-      ];
-
-      // Draw pose lines
-      for (const [i1, i2] of poseConnections) {
-        drawLine(pose, i1, i2, "#00ff00", 2);
-      }
-
-      // Draw pose points
-      for (const lm of pose) {
-        drawPoint(lm.x, lm.y, "#00ff00", 3);
-      }
-    }
-
-    // Draw left hand
-    if (holisticResults.leftHandLandmarks) {
-      const hand = holisticResults.leftHandLandmarks;
-      const handConnections = [
-        [0, 1],
-        [1, 2],
-        [2, 3],
-        [3, 4], // thumb
-        [0, 5],
-        [5, 6],
-        [6, 7],
-        [7, 8], // index
-        [0, 9],
-        [9, 10],
-        [10, 11],
-        [11, 12], // middle
-        [0, 13],
-        [13, 14],
-        [14, 15],
-        [15, 16], // ring
-        [0, 17],
-        [17, 18],
-        [18, 19],
-        [19, 20], // pinky
-        [5, 9],
-        [9, 13],
-        [13, 17], // palm
-      ];
-      for (const [i1, i2] of handConnections) {
-        drawLine(hand, i1, i2, "#ff6b6b", 1.5);
-      }
-      for (const lm of hand) {
-        drawPoint(lm.x, lm.y, "#ff6b6b", 2);
-      }
-    }
-
-    // Draw right hand
-    if (holisticResults.rightHandLandmarks) {
-      const hand = holisticResults.rightHandLandmarks;
-      const handConnections = [
-        [0, 1],
-        [1, 2],
-        [2, 3],
-        [3, 4],
-        [0, 5],
-        [5, 6],
-        [6, 7],
-        [7, 8],
-        [0, 9],
-        [9, 10],
-        [10, 11],
-        [11, 12],
-        [0, 13],
-        [13, 14],
-        [14, 15],
-        [15, 16],
-        [0, 17],
-        [17, 18],
-        [18, 19],
-        [19, 20],
-        [5, 9],
-        [9, 13],
-        [13, 17],
-      ];
-      for (const [i1, i2] of handConnections) {
-        drawLine(hand, i1, i2, "#4ecdc4", 1.5);
-      }
-      for (const lm of hand) {
-        drawPoint(lm.x, lm.y, "#4ecdc4", 2);
-      }
-    }
-
-    // Draw face mesh (simplified - just key points)
+    // Draw face mesh only
     if (holisticResults.faceLandmarks) {
       const face = holisticResults.faceLandmarks;
-      // Draw face oval and key features
+      // Draw face oval
       const faceKeyPoints = [
         10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365,
         379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234,
         127, 162, 21, 54, 103, 67, 109,
       ];
 
-      // Draw face outline
       ctx.beginPath();
       ctx.moveTo(
         face[faceKeyPoints[0]].x * canvas.width,
@@ -538,18 +401,24 @@ export function AnimatedAvatar({
       ctx.stroke();
 
       // Draw eyes and mouth
-      // Left eye
       drawLine(face, 33, 133, "#ffd93d", 1);
       drawLine(face, 159, 145, "#ffd93d", 1);
-      // Right eye
       drawLine(face, 362, 263, "#ffd93d", 1);
       drawLine(face, 386, 374, "#ffd93d", 1);
-      // Mouth
       drawLine(face, 61, 291, "#ffd93d", 1);
       drawLine(face, 13, 14, "#ffd93d", 1);
 
       // Nose tip
-      drawPoint(face[1].x, face[1].y, "#ffd93d", 3);
+      ctx.beginPath();
+      ctx.arc(
+        face[1].x * canvas.width,
+        face[1].y * canvas.height,
+        3,
+        0,
+        2 * Math.PI
+      );
+      ctx.fillStyle = "#ffd93d";
+      ctx.fill();
     }
   }, [showDebug, holisticResults]);
 
@@ -615,14 +484,8 @@ export function AnimatedAvatar({
           </div>
           <div className="bg-black/90 text-white text-[9px] p-1.5 font-mono space-y-0.5">
             <div className="flex gap-2">
-              <span className="text-green-400">●</span>
-              <span>Pose</span>
-              <span className="text-red-400">●</span>
-              <span>L-Hand</span>
-              <span className="text-cyan-400">●</span>
-              <span>R-Hand</span>
               <span className="text-yellow-400">●</span>
-              <span>Face</span>
+              <span>Face Tracking</span>
             </div>
             <div className="text-green-400">
               Pos: {blendShapes?.headPosition.x.toFixed(2)},{" "}

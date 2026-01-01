@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useSyncExternalStore, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { preloadAvatar } from "./AnimatedAvatar";
 
 interface JoinFormProps {
-  onJoin: (username: string, roomCode: string) => void;
+  onJoin?: (username: string, roomCode: string) => void;
 }
 
 // Use useSyncExternalStore to safely read localStorage (avoids hydration mismatch)
@@ -21,6 +22,7 @@ function useHasAvatar(): boolean | null {
 }
 
 export function JoinForm({ onJoin }: JoinFormProps) {
+  const router = useRouter();
   const [username, setUsername] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -64,7 +66,16 @@ export function JoinForm({ onJoin }: JoinFormProps) {
       : roomCode.trim().toUpperCase();
     if (!code) return;
 
-    onJoin(username.trim(), code);
+    // Store username in sessionStorage for the room
+    sessionStorage.setItem(`room_${code}_username`, username.trim());
+
+    // Call onJoin callback if provided (for backwards compatibility)
+    if (onJoin) {
+      onJoin(username.trim(), code);
+    }
+
+    // Redirect to room URL
+    router.push(`/${code}`);
   };
 
   // Show avatar error if either hook returns false OR if submit found no avatar
