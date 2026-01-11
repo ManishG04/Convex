@@ -1,22 +1,26 @@
-# Socket event constants
 class Events:
-    # Client -> Server
     ROOM_JOIN = "room:join"
     ROOM_LEAVE = "room:leave"
-    TIMER_START = "timer:start"
-    TIMER_STOP = "timer:stop"
-    USER_DISTRACTED = "user:distracted"
-    USER_FOCUSED = "user:focused"
-    BLEND_SHAPES = "avatar:blend-shapes"  # Avatar blend shapes from client
-
-    # Server -> Client
-    TIMER_STARTED = "timer:started"
-    TIMER_STOPPED = "timer:stopped"
-    TIMER_ENDED = "timer:ended"
+    ROOM_STATE = "room:state"
     USER_JOINED = "user:joined"
     USER_LEFT = "user:left"
-    USER_STATUS_CHANGED = "user:status-changed"
-    ROOM_STATE = "room:state"
-    BLEND_SHAPES_UPDATE = (
-        "avatar:blend-shapes-update"  # Broadcast blend shapes to others
-    )
+
+    TIMER_START = "timer:start"
+    TIMER_STARTED = "timer:started"
+    TIMER_ENDED = "timer:ended"
+    TIMER_STOP = "timer:stop"
+    TIMER_STOPPED = "timer:stopped"
+
+    USER_DISTRACTED = "user:distracted"
+    USER_FOCUSED = "user:focused"
+    USER_STATUS_CHANGED = "user:status_changed"
+
+    BLEND_SHAPES = "blend:shapes"
+    BLEND_SHAPES_UPDATE = "blend:shapes_update"
+
+    USER_CONFUSED = "user:confused"  # emitted when a furrowed-brow event detected
+
+    GROUP_SCORE_UPDATED = "group:score_updated"
+    GROUP_DPS_UPDATED = "group:dps_updated"
+
+    USER_METRICS = "user:metrics"
