@@ -202,6 +202,7 @@ interface AnimatedAvatarProps {
   isLocal?: boolean;
   className?: string;
   onBlendShapesUpdate?: (blendShapes: BlendShapes) => void;
+  onGazeUpdate?: (blendShapes: BlendShapes | null) => void;
   remoteUsername?: string;
   getRemoteBlendShapes?: (username: string) => NetworkBlendShapes | undefined;
 }
@@ -211,6 +212,7 @@ export function AnimatedAvatar({
   isLocal = false,
   className = "",
   onBlendShapesUpdate,
+  onGazeUpdate,
   remoteUsername,
   getRemoteBlendShapes,
 }: AnimatedAvatarProps) {
@@ -302,12 +304,22 @@ export function AnimatedAvatar({
               previousBlendShapesRef.current,
               0.3 // Lower smoothing for more responsive 1:1 tracking
             );
-            previousBlendShapesRef.current = smoothed;
+            
+            // Only update previous ref if we got valid data
+            if (smoothed) {
+              previousBlendShapesRef.current = smoothed;
+            }
             setBlendShapes(smoothed);
 
-            // Send blend shapes to other participants
-            if (onBlendShapesUpdate) {
+            // Send blend shapes to other participants (only if face detected)
+            if (onBlendShapesUpdate && smoothed) {
               onBlendShapesUpdate(smoothed);
+            }
+
+            // Process gaze for distraction detection
+            // IMPORTANT: Always call this, even with null (no face = distracted)
+            if (onGazeUpdate) {
+              onGazeUpdate(smoothed);
             }
           }
         );

@@ -30,6 +30,7 @@ interface VideoGridProps {
   localUsername: string;
   sendBlendShapes: (blendShapes: BlendShapes) => void;
   getRemoteBlendShapes: (username: string) => NetworkBlendShapes | undefined;
+  onGazeUpdate?: (blendShapes: BlendShapes | null) => void;
 }
 
 // Get avatar URL from localStorage
@@ -43,6 +44,7 @@ export function VideoGrid({
   localUsername,
   sendBlendShapes,
   getRemoteBlendShapes,
+  onGazeUpdate,
 }: VideoGridProps) {
   const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(null);
 
@@ -112,6 +114,7 @@ export function VideoGrid({
             onBlendShapesUpdate={
               participant.isLocal ? sendBlendShapes : undefined
             }
+            onGazeUpdate={participant.isLocal ? onGazeUpdate : undefined}
             getRemoteBlendShapes={
               !participant.isLocal ? getRemoteBlendShapes : undefined
             }
@@ -141,6 +144,7 @@ interface AvatarParticipantCardProps {
   isLocal: boolean;
   avatarUrl: string | null;
   onBlendShapesUpdate?: (blendShapes: BlendShapes) => void;
+  onGazeUpdate?: (blendShapes: BlendShapes | null) => void;
   getRemoteBlendShapes?: (username: string) => NetworkBlendShapes | undefined;
 }
 
@@ -150,6 +154,7 @@ function AvatarParticipantCard({
   isLocal,
   avatarUrl,
   onBlendShapesUpdate,
+  onGazeUpdate,
   getRemoteBlendShapes,
 }: AvatarParticipantCardProps) {
   return (
@@ -165,6 +170,7 @@ function AvatarParticipantCard({
           isLocal={isLocal}
           className="absolute inset-0"
           onBlendShapesUpdate={onBlendShapesUpdate}
+          onGazeUpdate={onGazeUpdate}
           remoteUsername={!isLocal ? username : undefined}
           getRemoteBlendShapes={getRemoteBlendShapes}
         />
@@ -194,8 +200,11 @@ function AvatarParticipantCard({
       {isDistracted && (
         <div className="absolute inset-0 bg-red-900/70 flex items-center justify-center z-10">
           <div className="text-center">
-            <span className="text-4xl">😴</span>
-            <p className="text-white font-medium mt-2">Distracted</p>
+            <span className="text-4xl">�</span>
+            <p className="text-white font-medium mt-2">Looking Away</p>
+            <p className="text-white/70 text-sm mt-1">
+              {isLocal ? "Please focus on screen" : "User is distracted"}
+            </p>
           </div>
         </div>
       )}
