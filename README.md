@@ -14,10 +14,11 @@ A V-Tuber style studyverse where your face controls the game, processed 100% loc
 - [Getting Started](#getting-started)
 
 ## About the Project
-
 **Convex** is a next-generation study environment that solves the isolation of remote learning without compromising privacy. By leveraging **Edge AI**, we turn a standard study session into a multiplayer RPG experience.
 
 Instead of broadcasting video (invasive and bandwidth-heavy), Convex tracks facial landmarks locally to animate a **3D Avatar** in real-time. If you focus, your avatar focuses. If you get distracted, your avatar falls asleep, and your game stats drop.
+
+[![Watch the video](https://img.youtube.com/A5ol8fsrwk0/0.jpg)](https://youtu.be/A5ol8fsrwk0)
 
 ## The Problem
 
@@ -55,8 +56,6 @@ We are moving from _Tracking Focus_ to _Optimizing Habits_.
 - **Confusion Detection:** The app detects "Furrowed Brow" micro-expressions to tag sessions as "High Cognitive Load," giving you data on which subjects are actually hardest for you.
 
 - **The Penalty:** If one user gets distracted (detected by AI), the group's **DPS (Damage Per Second)** drops. This creates positive peer pressure to stay focused.
-
-- **Ghost Mode (Async Multiplayer):** Study alongside the "Ghost" of a friend's previous session (recorded metadata, not video).
 
 - **Streaks:** The app will give user the option of setting their own limits, as the user can decide how many hours a day would be eligible for maintaining the streak.
 
