@@ -50,7 +50,12 @@ function lerpVec3(a: Vec3, b: Vec3, t: number): Vec3 {
   };
 }
 
-export function holisticToBlendShapes(results: HolisticResults): BlendShapes {
+export function holisticToBlendShapes(results: HolisticResults): BlendShapes | null {
+  // Return null if no face is detected - this is important for distraction detection
+  if (!results.faceLandmarks || results.faceLandmarks.length === 0) {
+    return null;
+  }
+
   const blendShapes: BlendShapes = {
     eyeBlinkLeft: 0,
     eyeBlinkRight: 0,
@@ -62,77 +67,80 @@ export function holisticToBlendShapes(results: HolisticResults): BlendShapes {
     headPosition: { x: 0.5, y: 0.5, z: 0 },
   };
 
-  // Process face landmarks only
-  if (results.faceLandmarks && results.faceLandmarks.length > 0) {
-    const face = results.faceLandmarks;
-    const {
-      leftEye,
-      rightEye,
-      mouth,
-      nose,
-      leftCheek,
-      rightCheek,
-      forehead,
-      chin,
-    } = FACE_INDICES;
+  // Process face landmarks
+  const face = results.faceLandmarks;
+  const {
+    leftEye,
+    rightEye,
+    mouth,
+    nose,
+    leftCheek,
+    rightCheek,
+    forehead,
+    chin,
+  } = FACE_INDICES;
 
-    // Eye blinks - measure vertical eye opening
-    const leftEyeDistance = Math.abs(
-      face[leftEye.top].y - face[leftEye.bottom].y
-    );
-    const rightEyeDistance = Math.abs(
-      face[rightEye.top].y - face[rightEye.bottom].y
-    );
-    // Higher multiplier = more sensitive to blinks
-    blendShapes.eyeBlinkLeft = clamp(1 - leftEyeDistance * 40, 0, 1);
-    blendShapes.eyeBlinkRight = clamp(1 - rightEyeDistance * 40, 0, 1);
+  // Eye blinks - measure vertical eye opening
+  const leftEyeDistance = Math.abs(
+    face[leftEye.top].y - face[leftEye.bottom].y
+  );
+  const rightEyeDistance = Math.abs(
+    face[rightEye.top].y - face[rightEye.bottom].y
+  );
+  // Higher multiplier = more sensitive to blinks
+  blendShapes.eyeBlinkLeft = clamp(1 - leftEyeDistance * 40, 0, 1);
+  blendShapes.eyeBlinkRight = clamp(1 - rightEyeDistance * 40, 0, 1);
 
-    // Mouth
-    const mouthOpenDistance = Math.abs(
-      face[mouth.top].y - face[mouth.bottom].y
-    );
-    blendShapes.jawOpen = clamp(mouthOpenDistance * 8, 0, 1);
+  // Mouth
+  const mouthOpenDistance = Math.abs(
+    face[mouth.top].y - face[mouth.bottom].y
+  );
+  blendShapes.jawOpen = clamp(mouthOpenDistance * 8, 0, 1);
 
-    const mouthWidth = Math.abs(face[mouth.left].x - face[mouth.right].x);
-    blendShapes.mouthSmile = clamp((mouthWidth - 0.12) * 3, 0, 1);
+  const mouthWidth = Math.abs(face[mouth.left].x - face[mouth.right].x);
+  blendShapes.mouthSmile = clamp((mouthWidth - 0.12) * 3, 0, 1);
 
-    // Head rotation
-    const nosePoint = face[nose];
-    const leftCheekPoint = face[leftCheek];
-    const rightCheekPoint = face[rightCheek];
-    const foreheadPoint = face[forehead];
-    const chinPoint = face[chin];
+  // Head rotation
+  const nosePoint = face[nose];
+  const leftCheekPoint = face[leftCheek];
+  const rightCheekPoint = face[rightCheek];
+  const foreheadPoint = face[forehead];
+  const chinPoint = face[chin];
 
-    blendShapes.headRotationY = clamp((nosePoint.x - 0.5) * 2, -1, 1);
-    const faceVerticalCenter = (foreheadPoint.y + chinPoint.y) / 2;
-    blendShapes.headRotationX = clamp(
-      (nosePoint.y - faceVerticalCenter) * 3,
-      -1,
-      1
-    );
-    blendShapes.headRotationZ = clamp(
-      (leftCheekPoint.y - rightCheekPoint.y) * 2,
-      -1,
-      1
-    );
+  blendShapes.headRotationY = clamp((nosePoint.x - 0.5) * 2, -1, 1);
+  const faceVerticalCenter = (foreheadPoint.y + chinPoint.y) / 2;
+  blendShapes.headRotationX = clamp(
+    (nosePoint.y - faceVerticalCenter) * 3,
+    -1,
+    1
+  );
+  blendShapes.headRotationZ = clamp(
+    (leftCheekPoint.y - rightCheekPoint.y) * 2,
+    -1,
+    1
+  );
 
-    // Head position tracking (using nose as center point)
-    blendShapes.headPosition = {
-      x: nosePoint.x,
-      y: nosePoint.y,
-      z: nosePoint.z,
-    };
-  }
+  // Head position tracking (using nose as center point)
+  blendShapes.headPosition = {
+    x: nosePoint.x,
+    y: nosePoint.y,
+    z: nosePoint.z,
+  };
 
   return blendShapes;
 }
 
 // Smooth blend shapes to reduce jitter
+// Returns null if current is null (no face detected)
 export function smoothBlendShapes(
-  current: BlendShapes,
+  current: BlendShapes | null,
   previous: BlendShapes | null,
   factor: number = 0.3
-): BlendShapes {
+): BlendShapes | null {
+  // If no face detected, return null
+  if (!current) return null;
+  
+  // If no previous data, return current
   if (!previous) return current;
 
   return {
