@@ -21,6 +21,7 @@ A V-Tuber style studyverse where your face controls the game, processed 100% loc
 
 Instead of broadcasting video (invasive and bandwidth-heavy), Convex tracks facial landmarks locally to animate a **3D Avatar** in real-time. If you focus, your avatar focuses. If you get distracted, your avatar falls asleep, and your game stats drop.
 
+## Demo Video (Click to play)
 [![Demo Video](https://img.youtube.com/vi/A5ol8fsrwk0/0.jpg)](https://youtu.be/A5ol8fsrwk0)
 
 ## The Problem
