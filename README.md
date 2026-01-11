@@ -7,10 +7,13 @@ A V-Tuber style studyverse where your face controls the game, processed 100% loc
 
 - [About the Project](#about-the-project)
 - [The Problem](#the-problem)
+- [System Architecture](#system-architecture)
 - [Privacy Architecture](#privacy--security-the-edge-ai-advantage)
 - [Key Features](#current-features-mvp)
+- [Scalability & Reliability](#scalability--reliability)
 - [Features for Round 2](#roadmap-round-2-updates)
 - [Tech Stack](#tech-stack)
+- [Team Contributions](#team-contributions)
 - [Getting Started](#getting-started)
 
 ## About the Project
@@ -31,6 +34,39 @@ Traditional study apps (Yeolpumta, Forest) and tools (Zoom, Discord) suffer from
 ## Userflow Diagram
 
 ![User Diagram](assets/convex_flowchart.png)
+
+## System Architecture
+
+### Production Architecture (AWS)
+
+![System Architecture](assets/system_architecture.png)
+
+
+
+### AWS Services Used
+
+| AWS Service             | Purpose                              | Why We Chose It                                                  |
+| ----------------------- | ------------------------------------ | ---------------------------------------------------------------- |
+| **CloudFront**          | CDN for Next.js static assets        | Global edge locations reduce latency for users worldwide         |
+| **ALB**                 | Load balancer with WebSocket support | Sticky sessions ensure Socket.IO connections stay on same server |
+| **ECS Fargate**         | Serverless container hosting         | No server management; auto-scales based on CPU/connections       |
+| **ElastiCache (Redis)** | Pub/Sub + session state              | Cross-server event sync for timer broadcasts                     |
+| **RDS PostgreSQL**      | Persistent data storage              | Managed database with automated backups                          |
+| **S3**                  | Static file storage                  | Avatar assets, user uploads                                      |
+| **CloudWatch**          | Monitoring & logging                 | Real-time metrics, error tracking, auto-scaling triggers         |
+| **Route 53**            | DNS management                       | Health checks + failover routing                                 |
+
+### Key Design Decisions
+
+| Decision                | Rationale                                             |
+| ----------------------- | ----------------------------------------------------- |
+| **Edge AI (MediaPipe)** | Zero video uploads = privacy + bandwidth savings      |
+| **Absolute timestamps** | `endTime` instead of `remaining` prevents timer drift |
+| **WebSocket transport** | Skip HTTP polling for lower latency                   |
+| **LiveKit SFU**         | Mesh WebRTC fails at 4-5 users; SFU scales to 10+     |
+| **Blend shape relay**   | Only 52 floats per frame vs full video stream         |
+| **ECS Fargate**         | Serverless containers = no EC2 management overhead    |
+| **ElastiCache Redis**   | Sub-millisecond pub/sub for real-time sync            |
 
 ## Current Features
 
@@ -76,6 +112,75 @@ We utilize a **Zero-Trust Video Architecture**. We understand that students are 
 | **Backend**   | Python FastAPI            | API and Logic                        |
 | **Real-Time** | python-socketio           | JSON Coordinate Sync for Multiplayer |
 | **Video**     | LiveKit                   | Optional video rooms                 |
+
+---
+
+## Scalability & Reliability
+
+### How We Handle Growth
+
+![How We Handle Growth](assets/growth_handle.png)
+
+| Challenge                     | MVP Solution             | AWS Production Solution                            |
+| ----------------------------- | ------------------------ | -------------------------------------------------- |
+| **Timer sync across servers** | Single server (no issue) | ElastiCache Redis pub/sub for cross-server sync    |
+| **Room state**                | In-memory dict           | Redis hash per room in ElastiCache                 |
+| **10+ video participants**    | LiveKit self-hosted      | LiveKit on EC2 Auto Scaling Group or LiveKit Cloud |
+| **Blend shape relay**         | Broadcast to room        | Redis streams + sharded rooms                      |
+| **Database**                  | SQLite                   | RDS PostgreSQL Multi-AZ + read replicas            |
+| **Static assets**             | Next.js server           | S3 + CloudFront CDN                                |
+| **SSL/TLS**                   | Local dev                | ACM certificates + ALB termination                 |
+| **Auto-scaling**              | Manual                   | ECS Service Auto Scaling (CPU/memory targets)      |
+
+### Failure Handling (AWS)
+
+| Failure Mode           | AWS Detection                       | Recovery Strategy                                       |
+| ---------------------- | ----------------------------------- | ------------------------------------------------------- |
+| **Container crash**    | ALB health checks + ECS task health | ECS auto-replaces unhealthy tasks; ALB reroutes traffic |
+| **Server overload**    | CloudWatch CPU/Memory alarms        | ECS auto-scaling adds Fargate tasks                     |
+| **Database failure**   | RDS Multi-AZ automatic failover     | Standby promoted in <60s; connection string unchanged   |
+| **Redis failure**      | ElastiCache Multi-AZ                | Automatic failover to replica node                      |
+| **Region outage**      | Route 53 health checks              | DNS failover to secondary region (DR setup)             |
+| **Client disconnect**  | Socket `disconnect` event           | Session preserved in Redis for 60s reconnect window     |
+| **Timer drift**        | N/A (absolute timestamps)           | Clients self-correct using `endTime - Date.now()`       |
+| **Face tracking loss** | MediaPipe confidence < 0.5          | Avatar freezes; resumes when face detected              |
+| **DDoS attack**        | AWS Shield + WAF                    | Automatic mitigation at CloudFront edge                 |
+
+### Why This Architecture Works
+
+1. **Stateless containers** - FastAPI on ECS Fargate; all state in ElastiCache Redis
+2. **Event-driven sync** - No polling; server pushes updates via WebSocket through ALB
+3. **Edge-heavy compute** - Face tracking runs on client = server only relays tiny payloads
+4. **Graceful degradation** - Video optional; app works with just avatars + timers
+5. **Multi-AZ resilience** - Database and cache replicated across availability zones
+6. **Global CDN** - CloudFront serves static assets from nearest edge location
+
+### Cost Optimization
+
+| Strategy                   | Implementation                                 | Estimated Savings       |
+| -------------------------- | ---------------------------------------------- | ----------------------- |
+| **Fargate Spot**           | Use Spot capacity for non-critical tasks       | Up to 70% on compute    |
+| **Reserved Instances**     | 1-year commitment for RDS & ElastiCache        | ~30-40% vs on-demand    |
+| **S3 Intelligent-Tiering** | Auto-move infrequent assets to cheaper storage | ~40% on storage         |
+| **CloudFront caching**     | Cache static assets at edge                    | Reduced origin requests |
+
+---
+
+## Team Contributions
+
+| Team Member              | Role           | Contributions                                                                        |
+| ------------------------ | -------------- | ------------------------------------------------------------------------------------ |
+| **Aditya Nandan**        | Frontend Lead  | Next.js setup, React components, Tailwind styling, timer UI, distraction overlay     |
+| **Anirudh Lakhanpal**    | Backend Lead   | FastAPI server, Socket.IO handlers, room management, timer broadcast logic           |
+| **Mohammad Shahnawaz Khan** | 3D/AI Engineer | Three.js avatar rendering, MediaPipe integration, blend shape mapping, face tracking |
+| **Manish Gupta**         | Infrastructure | LiveKit setup, deployment config, WebSocket optimization, testing                    |
+
+### Collaboration Workflow
+
+- **Communication**: Discord for daily standups
+- **Version Control**: GitHub with feature branches + PR reviews
+- **Task Tracking**: GitHub Issues + Projects board
+- **Docs**: Shared Notion for research notes
 
 ---
 

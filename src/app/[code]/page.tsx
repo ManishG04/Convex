@@ -2,8 +2,8 @@
 
 import { useState, useEffect, use, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { TimerDisplay, VideoGrid } from "@/components";
-import { useRoom, useDistraction } from "@/lib/hooks";
+import { TimerDisplay, VideoGrid, BossBattle } from "@/components";
+import { useRoom, useDistraction, useBossBattle } from "@/lib/hooks";
 import { preloadMediaPipe } from "@/lib/faceTracking";
 import Link from "next/link";
 import { preloadAvatar } from "@/components/AnimatedAvatar";
@@ -175,8 +175,28 @@ function RoomView({
     getRemoteBlendShapes,
   } = useRoom(roomCode, username);
 
-  // Set up distraction detection
-  useDistraction();
+  // Set up distraction detection with gaze tracking
+  const { distractionState, processGaze } = useDistraction();
+
+  // Set up boss battle
+  const {
+    bossState,
+    isBattleActive,
+    startBattle,
+    resetBattle,
+    setDistracted,
+    updateParticipants,
+  } = useBossBattle();
+
+  // Sync distraction state with boss battle
+  useEffect(() => {
+    setDistracted(distractionState.isDistracted);
+  }, [distractionState.isDistracted, setDistracted]);
+
+  // Sync participants with boss battle
+  useEffect(() => {
+    updateParticipants(participants, username);
+  }, [participants, username, updateParticipants]);
 
   const handleLeave = () => {
     sessionStorage.removeItem(`room_${roomCode}_username`);
@@ -224,7 +244,16 @@ function RoomView({
       {/* Main content */}
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Timer */}
-        <TimerDisplay isHost={participants[0]?.username === username} />
+        {/* <TimerDisplay isHost={participants[0]?.username === username} /> */}
+
+        {/* Boss Battle */}
+        <BossBattle
+          bossState={bossState}
+          isBattleActive={isBattleActive}
+          isDistracted={distractionState.isDistracted}
+          onStartBattle={startBattle}
+          onResetBattle={resetBattle}
+        /> 
 
         {/* Avatar grid */}
         <VideoGrid
@@ -232,7 +261,34 @@ function RoomView({
           localUsername={username}
           sendBlendShapes={sendBlendShapes}
           getRemoteBlendShapes={getRemoteBlendShapes}
+          onGazeUpdate={processGaze}
         />
+
+        {/* Gaze status indicator (local user only) */}
+        {distractionState.gazeState && (
+          <div className="flex justify-center">
+            <div
+              className={`px-4 py-2 rounded-lg text-sm ${
+                distractionState.isDistracted
+                  ? "bg-red-900/50 text-red-300 border border-red-700"
+                  : "bg-green-900/50 text-green-300 border border-green-700"
+              }`}
+            >
+              {distractionState.isDistracted ? (
+                distractionState.gazeState.direction === "no_face" ? (
+                  <span>🚫 Face not detected - Please face the camera</span>
+                ) : (
+                  <span>
+                    👀 Looking away ({distractionState.gazeState.direction}) -
+                    Please focus on screen
+                  </span>
+                )
+              ) : (
+                <span>✅ Focused on screen</span>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Stats */}
         <div className="bg-gray-900 rounded-xl p-4">
