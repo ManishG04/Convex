@@ -120,35 +120,7 @@ We utilize a **Zero-Trust Video Architecture**. We understand that students are 
 
 ### How We Handle Growth
 
-```
-            CURRENT (MVP)                              AWS PRODUCTION
-      ┌─────────────────────┐              ┌─────────────────────────────────────┐
-      │   Single Server     │              │         AWS Cloud                   │
-      │  ┌───────────────┐  │              │  ┌─────────────────────────────┐   │
-      │  │ FastAPI +     │  │              │  │     CloudFront (CDN)        │   │
-      │  │ Socket.IO     │  │              │  └──────────────┬──────────────┘   │
-      │  └───────────────┘  │              │                 │                  │
-      │                     │              │  ┌──────────────▼──────────────┐   │
-Users─►│  In-Memory State   │    Users ───►│  │    ALB (Sticky Sessions)    │   │
-      └─────────────────────┘              │  └──────────────┬──────────────┘   │
-                                           │       ┌─────────┼─────────┐        │
-                                           │  ┌────▼────┐┌───▼───┐┌────▼────┐  │
-                                           │  │Fargate 1││Farg. 2││Fargate 3│  │
-                                           │  │(FastAPI)││       ││         │  │
-                                           │  └────┬────┘└───┬───┘└────┬────┘  │
-                                           │       └─────────┼─────────┘       │
-                                           │                 ▼                  │
-                                           │  ┌─────────────────────────────┐  │
-                                           │  │   ElastiCache (Redis)       │  │
-                                           │  │   Pub/Sub + Room State      │  │
-                                           │  └─────────────────────────────┘  │
-                                           │                 │                  │
-                                           │  ┌──────────────▼──────────────┐  │
-                                           │  │      RDS PostgreSQL         │  │
-                                           │  │   (Multi-AZ, Read Replicas) │  │
-                                           │  └─────────────────────────────┘  │
-                                           └───────────────────────────────────┘
-```
+![How We Handle Growth](assets/growth_handle.png)
 
 | Challenge                     | MVP Solution             | AWS Production Solution                            |
 | ----------------------------- | ------------------------ | -------------------------------------------------- |
@@ -197,12 +169,12 @@ Users─►│  In-Memory State   │    Users ───►│  │    ALB (Stic
 
 ## Team Contributions
 
-| Team Member    | Role           | Contributions                                                                        |
-| -------------- | -------------- | ------------------------------------------------------------------------------------ |
-| **[Member 1]** | Frontend Lead  | Next.js setup, React components, Tailwind styling, timer UI, distraction overlay     |
-| **[Member 2]** | Backend Lead   | FastAPI server, Socket.IO handlers, room management, timer broadcast logic           |
-| **[Member 3]** | 3D/AI Engineer | Three.js avatar rendering, MediaPipe integration, blend shape mapping, face tracking |
-| **[Member 4]** | Infrastructure | LiveKit setup, deployment config, WebSocket optimization, testing                    |
+| Team Member              | Role           | Contributions                                                                        |
+| ------------------------ | -------------- | ------------------------------------------------------------------------------------ |
+| **Aditya Nandan**        | Frontend Lead  | Next.js setup, React components, Tailwind styling, timer UI, distraction overlay     |
+| **Anirudh Lakhanpal**    | Backend Lead   | FastAPI server, Socket.IO handlers, room management, timer broadcast logic           |
+| **Mohammad Shahnawaz Khan** | 3D/AI Engineer | Three.js avatar rendering, MediaPipe integration, blend shape mapping, face tracking |
+| **Manish Gupta**         | Infrastructure | LiveKit setup, deployment config, WebSocket optimization, testing                    |
 
 ### Collaboration Workflow
 
